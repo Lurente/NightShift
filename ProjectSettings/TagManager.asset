@@ -7,6 +7,7 @@ TagManager:
   - Ground
   - Wall
   - Trolley
+  - SpawnPoint
   layers:
   - Default
   - TransparentFX

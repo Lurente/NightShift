@@ -69,6 +69,7 @@
     <Compile Include="Assets\Scripts\PlayerInteractions.cs" />
     <Compile Include="Assets\Scripts\QTEManager.cs" />
     <Compile Include="Assets\Scripts\NPCHealth.cs" />
+    <Compile Include="Assets\Scripts\NPCSpawner.cs" />
     <Compile Include="Assets\Scripts\PlayerMovement.cs" />
   </ItemGroup>
   <ItemGroup>

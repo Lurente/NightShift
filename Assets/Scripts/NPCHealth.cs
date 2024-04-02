@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class NPCHealth : MonoBehaviour
 {
-    public int maxHealth = 100;
+    public int maxHealth = 3;
     public int currentHealth;
 
     void Start()
@@ -22,13 +22,6 @@ public class NPCHealth : MonoBehaviour
         {
             Die();
         }
-    }
-
-    public void Heal(int healAmount)
-    {
-        currentHealth += healAmount;
-        // Ensure current health does not exceed max health.
-        currentHealth = Mathf.Min(currentHealth, maxHealth);
     }
 
     private void Die()
