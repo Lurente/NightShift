@@ -4,46 +4,78 @@ using UnityEngine;
 
 public class BedBehavior : MonoBehaviour
 {
-    public bool IsOccupied { get; private set; } = false;
-
+    public bool IsOccupied = false;
+    public bool IsReserved = false;
+    public float maxOccupancyDuration = 60f; // Max wait time in seconds
+    private Coroutine occupancyCoroutine;
+    public NPCController currentOccupant;
+    public delegate void BedAvailabilityHandler();
     private void Awake()
     {
         IsOccupied = false; // Initialize the bed as unoccupied at the start
     }
+    public bool TryReserveBed()
+    {
+        if (!IsOccupied && !IsReserved)
+        {
+            IsReserved = true;
+            Debug.Log("Bed reserved.");
+            // Optionally, update the bed's appearance or state to indicate it's reserved
+            return true;
+        }
+        return false;
+    }
 
-    public void OccupyBed()
+    public void OccupyBed(NPCController npc)
     {
         if (!IsOccupied)
         {
             IsOccupied = true;
-            Debug.Log("Bed is now occupied.");
-            // Add any additional logic here for when the bed becomes occupied.
-            // For example, changing the bed's appearance to indicate it's in use.
+            currentOccupant = npc;
+            if (occupancyCoroutine != null)
+            {
+                StopCoroutine(occupancyCoroutine);
+            }
+            occupancyCoroutine = StartCoroutine(OccupancyDuration());
         }
     }
 
+    private IEnumerator OccupancyDuration()
+    {
+        yield return new WaitForSeconds(maxOccupancyDuration);
+        Debug.LogWarning("GRRRR TIRED OF WAITING!");
+        ReleaseBed();
+    }
     public void ReleaseBed()
     {
         IsOccupied = false;
-        Debug.Log("Bed is now available.");
-        // Add any logic here for when the bed becomes available again.
-        // This might include visual cues or enabling certain interactions.
+        if (currentOccupant != null)
+        {
+            currentOccupant.LeaveBedAndExit();
+            currentOccupant = null;
+        }
+        StopCoroutine(occupancyCoroutine); // Assuming this is defined elsewhere to manage occupancy time
+        LobbyQueue.NotifyNextNPC();
     }
 
-    // Optional: If you want beds to directly trigger QTEs upon interaction,
-    // you might include a method like this:
     public void AttemptToUseBed()
+{
+    // Start the QTE only if the bed is occupied, meaning there's a patient present.
+    // Avoid starting new interactions if the bed is merely reserved for someone else.
+    if (IsOccupied && !IsReserved)
     {
-        if (!IsOccupied)
-        {
-            // Directly trigger a QTE through the QTEManager, or notify the player that the bed is available
-            Debug.Log("Bed is available, starting QTE or other interaction.");
-            QTEManager.Instance.StartQTE();
-        }
-        else
-        {
-            Debug.Log("The bed is occupied.");
-            // Optionally, provide feedback or trigger a different interaction if the bed is occupied.
-        }
+        Debug.Log("Interacting with patient in the bed.");
+        QTEManager.Instance.StartQTE(); // Start the QTE for patient interaction.
     }
+    else if (!IsOccupied && IsReserved)
+    {
+        Debug.Log("The bed is reserved for another patient.");
+        // Optionally handle the case where the bed is reserved but not yet occupied.
+    }
+    else if (!IsOccupied)
+    {
+        Debug.Log("The bed is currently unoccupied.");
+        // Handle the case where there's no patient to interact with.
+    }
+}
 }

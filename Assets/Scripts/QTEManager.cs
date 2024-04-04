@@ -18,7 +18,22 @@ public class QTEManager : MonoBehaviour
     public DifficultyLevel currentDifficulty = DifficultyLevel.Level1;
     public float timeLimitPerQTE = 5f; // Time limit for each QTE
     public int numberOfQTEs = 3; // Number of QTEs for each level
+    public delegate void SuccessfulQTECompletionHandler();
+    public static event SuccessfulQTECompletionHandler OnSuccessfulQTECompletion;
 
+    private void CompleteQTESequence(int failedSequencesCount)
+    {
+        if (failedSequencesCount <= maxFailuresAllowed)
+        {
+            Debug.Log("All QTEs completed successfully or with minor failures.");
+            OnSuccessfulQTECompletion?.Invoke(); // Trigger the event.
+        }
+        else
+        {
+            Debug.Log("Failed the QTE session.");
+            QTEFailedBeyondLimit?.Invoke();
+        }
+    }
     private List<KeyCode> keySymbols = new List<KeyCode> { KeyCode.UpArrow, KeyCode.LeftArrow, KeyCode.RightArrow, KeyCode.DownArrow };
     private Dictionary<KeyCode, string> keyCodeToSymbol = new Dictionary<KeyCode, string>
 {
@@ -117,21 +132,12 @@ public class QTEManager : MonoBehaviour
             if (!sequenceCompleted || currentIndex < sequence.Length)
             {
                 failedSequencesCount++;
-                if (failedSequencesCount > maxFailuresAllowed)
-                {
-                    Debug.Log("Failed the interaction. NPC will lose one life.");
-                    QTEFailedBeyondLimit?.Invoke(); // Notify of QTE failure beyond limit.
-                    break; // Exit the QTE sequence early due to excessive failures.
-                }
             }
 
             yield return new WaitForSeconds(1f); // Delay between QTEs
         }
 
-        if (failedSequencesCount <= maxFailuresAllowed)
-        {
-            Debug.Log("All QTEs completed successfully or with minor failures.");
-        }
+        CompleteQTESequence(failedSequencesCount);
     }
 
     private void ShowSequenceToPlayer(KeyCode[] sequence)

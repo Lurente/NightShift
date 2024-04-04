@@ -110,11 +110,11 @@ public class PlayerMovement : MonoBehaviour
     }
     void MakePlayerFall()
     {
-        // Example: Rotate the capsule forward by 90 degrees
-        playerRb.constraints = RigidbodyConstraints.None; // Remove constraints
-        playerRb.constraints = RigidbodyConstraints.FreezePositionX | RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezeRotationY; // Example setup
+        playerRb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        playerRb.AddForce(-transform.up * 0.1f, ForceMode.VelocityChange);
         transform.rotation = Quaternion.Euler(90, 0, 0);
     }
+
     void MakePlayerStandUp()
     {
         // Reset the rotation to stand the capsule upright

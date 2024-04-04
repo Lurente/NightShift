@@ -154,7 +154,7 @@ MonoBehaviour:
   interactionDistance: 2.2
   bedLayer:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 64
 --- !u!114 &9130154008516686639
 MonoBehaviour:
   m_ObjectHideFlags: 0

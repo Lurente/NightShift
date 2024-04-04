@@ -4,83 +4,166 @@ using UnityEngine;
 
 public class NPCController : MonoBehaviour
 {
-    public float moveSpeed = 2f; // Movement speed of the NPC
-    public float searchRadius = 1000f; // Radius to search for unoccupied beds
-    public float interactionDistance = 2.2f; // Distance to consider the NPC close enough to interact with the bed
-    public LayerMask bedLayer; // Layer mask to filter beds
+    public float moveSpeed = 2f;
+    public Transform lobbyPoint;
+    public Transform exitPoint;
+    public float searchRadius = 1000f;
+    public float interactionDistance = 2.2f;
+    public LayerMask bedLayer;
 
-    private Transform targetBed; // Reference to the nearest unoccupied bed
+    private Transform targetBed;
     private bool reachedDestination = false;
+    private bool isWaitingForBed = false;
 
-    private void Start()
+    public void CheckForAvailableBed()
     {
-        FindNearestUnoccupiedBed();
-        if (targetBed != null)
+        if (isWaitingForBed)
         {
-            MoveTowardsBed();
+            // The NPC was waiting in the lobby; try to find an unoccupied bed again.
+            FindNearestUnoccupiedBed();
+        }
+    }
+    public void LeaveBedAndExit()
+    {
+        StartCoroutine(MoveToExitAndDestroy());
+    }
+    public void StartWaitingForBed()
+    {
+        isWaitingForBed = true;
+        // Logic to move to the lobby or perform waiting actions
+    }
+
+    public void Start()
+    {
+        GameObject waitingRoom = GameObject.FindGameObjectWithTag("Lobby");
+        GameObject exit = GameObject.FindGameObjectWithTag("exitPoint");
+        if (waitingRoom != null)
+        {
+            lobbyPoint = waitingRoom.transform;
         }
         else
         {
-            Debug.LogWarning("No unoccupied beds found.");
+            Debug.LogError("Failed to find the Waiting Room GameObject.");
         }
+        if (exit != null)
+        {
+            exitPoint = exit.transform;
+        }
+        else
+        {
+            Debug.LogError("Failed to find the Waiting Room GameObject.");
+        }
+        FindNearestUnoccupiedBed();
     }
 
-    private void Update()
+    private void FixedUpdate()
     {
-        // Check if the NPC has reached its destination (the bed)
         if (!reachedDestination && targetBed != null)
         {
-            MoveTowardsBed();
+            MoveToTarget(); // Moved into FixedUpdate for physics consistency.
         }
     }
 
     private void FindNearestUnoccupiedBed()
     {
-        Debug.LogWarning("Looking for a bed.");
         Collider[] colliders = Physics.OverlapSphere(transform.position, searchRadius, bedLayer);
         float closestDistance = Mathf.Infinity;
+        Transform newTargetBed = null;
+
         foreach (Collider collider in colliders)
         {
             BedBehavior bed = collider.GetComponent<BedBehavior>();
-            if (bed != null && !bed.IsOccupied) // Corrected method name here
+            if (bed != null && !bed.IsOccupied)
             {
-                Debug.LogWarning("Found a bed.");
                 float distanceToBed = Vector3.Distance(transform.position, collider.transform.position);
                 if (distanceToBed < closestDistance)
                 {
                     closestDistance = distanceToBed;
-                    targetBed = collider.transform;
+                    newTargetBed = collider.transform;
                 }
             }
         }
+
+        if (newTargetBed != null)
+        {
+            targetBed = newTargetBed;
+            Debug.LogWarning("Found an unoccupied bed.");
+            // Optionally, start moving towards the bed here or ensure Update handles it.
+        }
+        else
+        {
+            Debug.LogWarning("No unoccupied beds found, moving to the lobby.");
+            MoveToLobby(); // Call a method to handle moving to the lobby
+        }
     }
 
-    private void MoveTowardsBed()
+
+    private void MoveToTarget()
     {
-        // Calculate the direction to the bed
+        if (reachedDestination) return; // No need to move if the destination is reached
+
         Vector3 direction = (targetBed.position - transform.position).normalized;
-
-        // Move the NPC towards the bed using Rigidbody's velocity
-        // Adjust moveSpeed according to your needs
         Rigidbody rb = GetComponent<Rigidbody>();
-        rb.velocity = direction * moveSpeed;
+        rb.MovePosition(rb.position + direction * moveSpeed * Time.deltaTime);
 
-        // Check if the NPC has reached the bed
-        float distanceToBed = Vector3.Distance(transform.position, targetBed.position);
-        if (distanceToBed < interactionDistance)
+        CheckDestinationReached();
+    }
+    private void CheckDestinationReached()
+    {
+        float distanceToTarget = Vector3.Distance(transform.position, targetBed.position);
+        if (distanceToTarget < interactionDistance)
+        {
+            ProcessArrival();
+        }
+    }
+    private void ProcessArrival()
+    {
+        if (targetBed == lobbyPoint)
         {
             reachedDestination = true;
-            // Occupy the bed
+            Debug.LogWarning("Reached lobby.");
+        }
+        else
+        {
             BedBehavior bed = targetBed.GetComponent<BedBehavior>();
-            if (bed != null)
+            if (bed != null && !bed.IsOccupied)
             {
-                bed.OccupyBed();
+                reachedDestination = true;
+                bed.OccupyBed(this);
                 Debug.LogWarning("Reached bed.");
-                StartCoroutine(layDown());
+                StartCoroutine(LayDown());
+            }
+            else
+            {
+                Debug.LogWarning("The bed has been occupied.");
+                targetBed = null; // Search for another bed or move to the lobby.
+                FindNearestUnoccupiedBed();
             }
         }
     }
-    private IEnumerator layDown()
+    private void MoveToLobby()
+    {
+        if (lobbyPoint == null)
+        {
+            Debug.LogError("Lobby point not set.");
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false; // Stop play mode.
+#endif
+            return;
+        }
+        if (lobbyPoint != null)
+        {
+            // Update the target position to be the lobby point and reset the reached destination flag
+            targetBed = lobbyPoint;
+            reachedDestination = false;
+        }
+        else
+        {
+            Debug.LogError("Lobby point not set.");
+        }
+    }
+
+    private IEnumerator LayDown()
     {
         Debug.LogWarning("Started laying on bed.");
         // Define the position and rotation for lying down on the bed
@@ -97,6 +180,17 @@ public class NPCController : MonoBehaviour
 
         // You can add more logic here if needed, such as triggering animations or other behaviors
         yield return null; // This line is added to make the function a coroutine
+    }
+    private IEnumerator MoveToExitAndDestroy()
+    {
+        // Example movement towards the exit point
+        while (Vector3.Distance(transform.position, exitPoint.position) > 1f) // Arbitrary small distance
+        {
+            transform.position = Vector3.MoveTowards(transform.position, exitPoint.position, 5f * Time.deltaTime); // Move towards the exit
+            yield return null;
+        }
+
+        Destroy(gameObject); // Destroy the NPC object once it reaches the exit point
     }
 
 }

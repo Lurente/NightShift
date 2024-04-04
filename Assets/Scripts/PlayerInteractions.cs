@@ -11,12 +11,13 @@ public class PlayerInteractions : MonoBehaviour
         // Check for interaction with objects
         if (Input.GetKeyDown(KeyCode.F))
         {
-            StartCoroutine(StartQTEWithDelay());
+          StartCoroutine(InteractWithNearbyObjects());
         }
     }
 
-    private void InteractWithNearbyObjects()
+    private IEnumerator InteractWithNearbyObjects()
     {
+        yield return new WaitForSeconds(0.5f);
         RaycastHit hit;
         if (Physics.Raycast(transform.position, transform.forward, out hit, interactionDistance))
         {
@@ -24,30 +25,8 @@ public class PlayerInteractions : MonoBehaviour
             if (bed != null)
             {
                 // Ensure QTEManager.Instance is not null before calling StartQTE
-                if (QTEManager.Instance != null)
-                {
-                    QTEManager.Instance.StartQTE();
-                }
-                else
-                {
-                    Debug.LogError("QTEManager.Instance is null");
-                }
+                bed.AttemptToUseBed();
             }
-        }
-    }
-    private IEnumerator StartQTEWithDelay()
-    {
-        // Wait for half a second
-        yield return new WaitForSeconds(0.5f);
-
-        // Check if the QTEManager instance is available and start the QTE
-        if (QTEManager.Instance != null)
-        {
-            QTEManager.Instance.StartQTE();
-        }
-        else
-        {
-            Debug.LogError("QTEManager.Instance is null.");
         }
     }
 
